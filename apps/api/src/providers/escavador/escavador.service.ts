@@ -29,7 +29,7 @@ export class EscavadorService implements LegalDataProvider {
     };
   }
 
-  async searchCompany(query: string): Promise<ProviderPage<NormalizedCompany>> {
+  async searchCompany(query: string, _context: ProviderRequestContext): Promise<ProviderPage<NormalizedCompany>> {
     const raw = await this.client.request<any>(`/busca?qo=${encodeURIComponent(query)}&tipo=empresa`);
     return {
       data: (raw.items ?? raw.data ?? []).map((item: any) => ({
@@ -43,7 +43,7 @@ export class EscavadorService implements LegalDataProvider {
     };
   }
 
-  async searchProcess(caseNumber: string): Promise<NormalizedProcessCase | null> {
+  async searchProcess(caseNumber: string, _context: ProviderRequestContext): Promise<NormalizedProcessCase | null> {
     const raw = await this.client.request<any>(`/processos/numero/${encodeURIComponent(caseNumber)}`);
     const processo = raw.data ?? raw;
     if (!processo) return null;
@@ -62,7 +62,7 @@ export class EscavadorService implements LegalDataProvider {
     };
   }
 
-  async getMovements(caseNumber: string): Promise<ProviderPage<NormalizedMovement>> {
+  async getMovements(caseNumber: string, _context: ProviderRequestContext): Promise<ProviderPage<NormalizedMovement>> {
     const raw = await this.client.request<any>(`/processos/numero/${encodeURIComponent(caseNumber)}/movimentacoes`);
     return {
       data: (raw.items ?? raw.data ?? []).map((item: any) => ({

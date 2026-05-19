@@ -17,4 +17,4 @@ ENV NODE_ENV=production
 COPY --from=build /app/apps/api/dist ./dist
 COPY --from=build /app/node_modules ./node_modules
 EXPOSE 4000
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/apps/api/src/main.js"]
