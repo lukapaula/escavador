@@ -31,7 +31,7 @@ export class AuditService {
         entityId: input.entityId?.toString(),
         ipAddress: input.ipAddress,
         userAgent: input.userAgent,
-        metadata: input.metadata ?? {},
+        metadata: input.metadata ? JSON.parse(JSON.stringify(input.metadata)) : {},
         prevHash: previous?.entryHash,
         entryHash: createHash("sha256").update(payload).digest("hex")
       }
