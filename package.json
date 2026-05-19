@@ -9,6 +9,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "npm run db:generate",
     "dev": "npm run dev --workspace @legalops/api & npm run dev --workspace @legalops/web",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces --if-present",

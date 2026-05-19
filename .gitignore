@@ -8,3 +8,5 @@ coverage
 tmp
 uploads
 playwright-report
+
+.vercel

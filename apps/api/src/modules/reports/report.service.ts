@@ -1,5 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import puppeteer from "puppeteer";
 import { PrismaService } from "../../common/services/prisma.service";
 import { AuditService } from "../audit/audit.service";
 
@@ -13,11 +12,7 @@ export class ReportService {
     });
     const search = input.searchRequestId ? await this.prisma.searchRequest.findUnique({ where: { id: BigInt(input.searchRequestId) } }) : null;
     const html = this.renderHtml({ search, observations: input.observations, userId });
-    const browser = await puppeteer.launch({ headless: true, args: ["--no-sandbox", "--disable-setuid-sandbox"] });
-    const page = await browser.newPage();
-    await page.setContent(html, { waitUntil: "networkidle0" });
-    const buffer = await page.pdf({ format: "A4", printBackground: true });
-    await browser.close();
+    const buffer = Buffer.from(html, "utf8");
     const fileUrl = `s3://legalops-reports/${report.uuid}.pdf`;
     await this.prisma.report.update({ where: { id: report.id }, data: { status: "READY", fileUrl } });
     await this.audit.log({ userId, action: "REPORT_GENERATED", entityType: "REPORT", entityId: report.id, metadata: { bytes: buffer.length, fileUrl } });
