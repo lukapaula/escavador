@@ -1,0 +1,25 @@
+{
+  "name": "enterprise-legal-hr-compliance",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma interna enterprise para RH, Compliance, monitoramento processual e background check corporativo com LGPD.",
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace @legalops/api & npm run dev --workspace @legalops/web",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "db:generate": "npm run prisma:generate --workspace @legalops/database",
+    "db:migrate": "npm run prisma:migrate --workspace @legalops/database",
+    "db:seed": "npm run seed --workspace @legalops/database"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

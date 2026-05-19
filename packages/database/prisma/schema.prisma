@@ -1,0 +1,378 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  COMPLIANCE
+  HR_MANAGER
+  HR_ANALYST
+  LEGAL
+  AUDITOR
+  READONLY
+}
+
+enum TargetType {
+  PERSON
+  COMPANY
+  PROCESS_CASE
+}
+
+enum SearchStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  BLOCKED
+}
+
+enum LegalBasis {
+  CONSENT
+  LEGITIMATE_INTEREST
+  CONTRACT_EXECUTION
+  LEGAL_OBLIGATION
+  RIGHTS_EXERCISE
+  PUBLIC_POLICY
+}
+
+enum EntityStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+  ANONYMIZED
+  DELETED
+}
+
+enum MonitoringStatus {
+  ACTIVE
+  PAUSED
+  FAILED
+  CANCELLED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AlertStatus {
+  OPEN
+  ACKNOWLEDGED
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum ProviderName {
+  ESCAVADOR
+  BRASIL_API
+  RECEITAWS
+  CNJ_DATAJUD
+  INTERNAL
+}
+
+model User {
+  id                 BigInt      @id @default(autoincrement())
+  uuid               String      @unique @default(uuid()) @db.Uuid
+  name               String
+  email              String      @unique
+  passwordHash       String      @map("password_hash")
+  role               UserRole    @default(READONLY)
+  permissions        Json        @default("{}") @db.JsonB
+  twoFactorEnabled   Boolean     @default(false) @map("two_factor_enabled")
+  twoFactorSecret    String?     @map("two_factor_secret")
+  lastLoginAt        DateTime?   @map("last_login_at")
+  isActive           Boolean     @default(true) @map("is_active")
+  createdAt          DateTime    @default(now()) @map("created_at")
+  updatedAt          DateTime    @updatedAt @map("updated_at")
+  refreshTokens      RefreshToken[]
+  personsCreated     Person[]    @relation("PersonCreatedBy")
+  searchRequests     SearchRequest[] @relation("SearchRequestedBy")
+  monitorings        Monitoring[] @relation("MonitoringCreatedBy")
+  assignedAlerts     Alert[]     @relation("AlertAssignedTo")
+  reports            Report[]    @relation("ReportGeneratedBy")
+  auditLogs          AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id          BigInt   @id @default(autoincrement())
+  uuid        String   @unique @default(uuid()) @db.Uuid
+  userId      BigInt   @map("user_id")
+  tokenHash   String   @map("token_hash")
+  expiresAt   DateTime @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Person {
+  id              BigInt       @id @default(autoincrement())
+  uuid            String       @unique @default(uuid()) @db.Uuid
+  fullName        String       @map("full_name")
+  cpfEncrypted    String?      @map("cpf_encrypted")
+  cpfHash         String?      @unique @map("cpf_hash")
+  birthDate       DateTime?    @map("birth_date")
+  phone           String?
+  email           String?
+  source          String?
+  purpose         String
+  legalBasis      LegalBasis   @map("legal_basis")
+  consentFileUrl  String?      @map("consent_file_url")
+  status          EntityStatus @default(ACTIVE)
+  notes           String?
+  riskScore       Int          @default(0) @map("risk_score")
+  createdBy       BigInt?      @map("created_by")
+  retentionUntil  DateTime?    @map("retention_until")
+  anonymizedAt    DateTime?    @map("anonymized_at")
+  deletedAt       DateTime?    @map("deleted_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+  creator         User?        @relation("PersonCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([fullName])
+  @@index([status])
+  @@map("persons")
+}
+
+model Company {
+  id              BigInt       @id @default(autoincrement())
+  uuid            String       @unique @default(uuid()) @db.Uuid
+  legalName       String       @map("legal_name")
+  tradeName       String?      @map("trade_name")
+  cnpjEncrypted   String?      @map("cnpj_encrypted")
+  cnpjHash        String?      @unique @map("cnpj_hash")
+  email           String?
+  phone           String?
+  mainActivity    String?      @map("main_activity")
+  legalNature     String?      @map("legal_nature")
+  size            String?
+  address         Json?        @db.JsonB
+  partners        Json?        @db.JsonB
+  source          String?
+  notes           String?
+  riskScore       Int          @default(0) @map("risk_score")
+  status          EntityStatus @default(ACTIVE)
+  retentionUntil  DateTime?    @map("retention_until")
+  anonymizedAt    DateTime?    @map("anonymized_at")
+  deletedAt       DateTime?    @map("deleted_at")
+  createdAt       DateTime     @default(now()) @map("created_at")
+  updatedAt       DateTime     @updatedAt @map("updated_at")
+
+  @@index([legalName])
+  @@index([status])
+  @@map("companies")
+}
+
+model SearchRequest {
+  id                  BigInt       @id @default(autoincrement())
+  uuid                String       @unique @default(uuid()) @db.Uuid
+  requestedBy         BigInt       @map("requested_by")
+  targetType          TargetType   @map("target_type")
+  targetId            BigInt?      @map("target_id")
+  provider            ProviderName
+  queryType           String       @map("query_type")
+  queryValue          String       @map("query_value")
+  purpose             String
+  legalBasis          LegalBasis   @map("legal_basis")
+  status              SearchStatus @default(PENDING)
+  rawResult           Json?        @map("raw_result") @db.JsonB
+  normalizedResult    Json?        @map("normalized_result") @db.JsonB
+  lgpdJustification   String       @map("lgpd_justification")
+  errorMessage        String?      @map("error_message")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+  requester           User         @relation("SearchRequestedBy", fields: [requestedBy], references: [id])
+  reports             Report[]
+
+  @@index([targetType, targetId])
+  @@index([provider, status])
+  @@map("search_requests")
+}
+
+model ProcessCase {
+  id                  BigInt    @id @default(autoincrement())
+  uuid                String    @unique @default(uuid()) @db.Uuid
+  caseNumber          String    @unique @map("case_number")
+  court               String?
+  courtState          String?   @map("court_state")
+  instance            String?
+  caseClass           String?   @map("case_class")
+  subject             String?
+  area                String?
+  distributionDate    DateTime? @map("distribution_date")
+  claimValue          Decimal?  @map("claim_value") @db.Decimal(16, 2)
+  secrecyLevel        Int       @default(0) @map("secrecy_level")
+  parties             Json?     @db.JsonB
+  lawyers             Json?     @db.JsonB
+  source              String?
+  provider            ProviderName
+  monitoringEnabled   Boolean   @default(false) @map("monitoring_enabled")
+  lastSyncAt          DateTime? @map("last_sync_at")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+  movements           ProcessMovement[]
+
+  @@index([caseNumber])
+  @@index([courtState, court])
+  @@map("process_cases")
+}
+
+model ProcessMovement {
+  id              BigInt      @id @default(autoincrement())
+  uuid            String      @unique @default(uuid()) @db.Uuid
+  processCaseId   BigInt      @map("process_case_id")
+  movementDate    DateTime?   @map("movement_date")
+  movementType    String?     @map("movement_type")
+  title           String
+  description     String?
+  source          String?
+  provider        ProviderName
+  movementHash    String      @unique @map("movement_hash")
+  rawPayload      Json?       @map("raw_payload") @db.JsonB
+  createdAt       DateTime    @default(now()) @map("created_at")
+  processCase     ProcessCase @relation(fields: [processCaseId], references: [id])
+
+  @@index([processCaseId, movementDate])
+  @@map("process_movements")
+}
+
+model Monitoring {
+  id             BigInt           @id @default(autoincrement())
+  uuid           String           @unique @default(uuid()) @db.Uuid
+  entityType     TargetType        @map("entity_type")
+  entityId       BigInt           @map("entity_id")
+  frequency      String
+  provider       ProviderName
+  webhookUrl     String?          @map("webhook_url")
+  lastCheckedAt  DateTime?        @map("last_checked_at")
+  nextCheckAt    DateTime?        @map("next_check_at")
+  status         MonitoringStatus @default(ACTIVE)
+  createdBy      BigInt?          @map("created_by")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+  creator        User?            @relation("MonitoringCreatedBy", fields: [createdBy], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([status, nextCheckAt])
+  @@map("monitorings")
+}
+
+model Alert {
+  id          BigInt        @id @default(autoincrement())
+  uuid        String        @unique @default(uuid()) @db.Uuid
+  entityType  TargetType     @map("entity_type")
+  entityId    BigInt        @map("entity_id")
+  severity    AlertSeverity
+  alertType   String        @map("alert_type")
+  title       String
+  description String?
+  metadata    Json?         @db.JsonB
+  assignedTo  BigInt?       @map("assigned_to")
+  status      AlertStatus   @default(OPEN)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  assignee    User?         @relation("AlertAssignedTo", fields: [assignedTo], references: [id])
+
+  @@index([severity, status])
+  @@index([entityType, entityId])
+  @@map("alerts")
+}
+
+model Report {
+  id              BigInt       @id @default(autoincrement())
+  uuid            String       @unique @default(uuid()) @db.Uuid
+  generatedBy     BigInt       @map("generated_by")
+  reportType      String       @map("report_type")
+  searchRequestId BigInt?      @map("search_request_id")
+  fileUrl         String?      @map("file_url")
+  status          ReportStatus @default(PENDING)
+  createdAt       DateTime     @default(now()) @map("created_at")
+  generator       User         @relation("ReportGeneratedBy", fields: [generatedBy], references: [id])
+  searchRequest   SearchRequest? @relation(fields: [searchRequestId], references: [id])
+
+  @@index([generatedBy])
+  @@map("reports")
+}
+
+model AuditLog {
+  id          BigInt   @id @default(autoincrement())
+  uuid        String   @unique @default(uuid()) @db.Uuid
+  userId      BigInt?  @map("user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  metadata    Json?    @db.JsonB
+  prevHash    String?  @map("prev_hash")
+  entryHash   String   @unique @map("entry_hash")
+  createdAt   DateTime @default(now()) @map("created_at")
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+model WebhookEndpoint {
+  id          BigInt   @id @default(autoincrement())
+  uuid        String   @unique @default(uuid()) @db.Uuid
+  name        String
+  provider    ProviderName
+  secretHash  String   @map("secret_hash")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  events      WebhookEvent[]
+
+  @@map("webhook_endpoints")
+}
+
+model WebhookEvent {
+  id          BigInt   @id @default(autoincrement())
+  uuid        String   @unique @default(uuid()) @db.Uuid
+  endpointId  BigInt   @map("endpoint_id")
+  eventType   String   @map("event_type")
+  payload     Json     @db.JsonB
+  signature   String?
+  processedAt DateTime? @map("processed_at")
+  status      String   @default("RECEIVED")
+  createdAt   DateTime @default(now()) @map("created_at")
+  endpoint    WebhookEndpoint @relation(fields: [endpointId], references: [id])
+
+  @@index([eventType, status])
+  @@map("webhook_events")
+}
+
+model IntegrationCredential {
+  id                  BigInt       @id @default(autoincrement())
+  uuid                String       @unique @default(uuid()) @db.Uuid
+  provider            ProviderName
+  encryptedCredential String       @map("encrypted_credential")
+  keyVersion          String       @map("key_version")
+  isActive            Boolean      @default(true) @map("is_active")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  @@unique([provider, isActive])
+  @@map("integration_credentials")
+}

@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@legalops/types": ["packages/types/src"],
+      "@legalops/providers": ["packages/providers/src"],
+      "@legalops/auth": ["packages/auth/src"],
+      "@legalops/logger": ["packages/logger/src"],
+      "@legalops/database": ["packages/database/src"],
+      "@legalops/ui": ["packages/ui/src"]
+    }
+  }
+}
